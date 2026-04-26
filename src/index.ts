@@ -1,6 +1,6 @@
 /**
  * ──────────────────────────────────────────────
- *  Pi Web Access v2 — Extension Entry Point
+ *  Extension Entry Point
  * ──────────────────────────────────────────────
  * Registers search, fetch, and code-search tools
  * with the Pi Coding Agent runtime.
