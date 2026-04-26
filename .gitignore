@@ -1,0 +1,9 @@
+**/env*
+**/config.yaml
+node_modules/
+.tldr/
+dist/
+coverage/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

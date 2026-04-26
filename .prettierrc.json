@@ -1,0 +1,38 @@
+{
+    "printWidth": 100,
+    "tabWidth": 4,
+    "useTabs": false,
+    "semi": true,
+    "singleQuote": false,
+    "jsxSingleQuote": false,
+    "quoteProps": "as-needed",
+    "trailingComma": "all",
+    "bracketSpacing": true,
+    "bracketSameLine": false,
+    "arrowParens": "always",
+    "endOfLine": "lf",
+    "embeddedLanguageFormatting": "auto",
+    "singleAttributePerLine": false,
+    "overrides": [
+        {
+            "files": ["*.json", "*.jsonc", "*.json5"],
+            "options": {
+                "printWidth": 80
+            }
+        },
+        {
+            "files": ["*.md", "*.mdx"],
+            "options": {
+                "proseWrap": "preserve",
+                "printWidth": 120
+            }
+        },
+        {
+            "files": ["*.yml", "*.yaml"],
+            "options": {
+                "singleQuote": true,
+                "printWidth": 80
+            }
+        }
+    ]
+}
