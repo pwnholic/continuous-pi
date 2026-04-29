@@ -25,12 +25,9 @@
         "lint": "biome check src/",
         "lint:fix": "biome check --fix --unsafe src/",
         "format": "biome format --write src/",
-        "build:curator": "cd curator-ui && npm run build",
-        "build": "npm run build:curator",
         "test": "vitest run",
         "test:watch": "vitest",
-        "prepublishOnly": "npm run build && npm run typecheck && npm run lint && npm run test",
-        "clean": "rm -rf curator-ui/dist"
+        "prepublishOnly": "npm run typecheck && npm run lint && npm run test"
     },
     "dependencies": {
         "@mozilla/readability": "^0.6.0",
