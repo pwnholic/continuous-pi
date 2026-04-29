@@ -191,7 +191,7 @@ describe("smoke: curator HTML", () => {
         expect(html).toContain("Web Search Curator");
         expect(html).toContain("test query 1");
         expect(html).toContain("tok-123");
-        expect(html).toContain("tailwindcss");
+        expect(html).toContain("--c-bg");
         expect(html).toContain("perplexity");
         expect(html).toContain("exa");
         expect(html).toContain("claude-haiku-4-5");
