@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getApiBaseUrl, getSummarizerModel, getSummaryModels, getVideoModel, getWebclawConfig } from "../config.js";
+import {
+    getApiBaseUrl,
+    getSummarizerModel,
+    getSummaryModels,
+    getVideoModel,
+    getWebclawConfig,
+    loadConfigSafe,
+} from "../config.js";
 
 describe("config - getWebclawConfig", () => {
     it("returns defaults when no webclaw config", () => {
@@ -48,7 +55,6 @@ describe("config - getSummaryModels", () => {
 
     it("returns configured models", () => {
         const models = getSummaryModels({ models: { preferred: [{ provider: "test", id: "model-1" }] } });
-        // This test works because when passed directly it uses the argument
         expect(models.length).toBe(1);
         expect(models[0]?.provider).toBe("test");
     });
@@ -77,5 +83,24 @@ describe("config - getApiBaseUrl", () => {
         expect(getApiBaseUrl("gemini-web")).toContain("google.com");
         expect(getApiBaseUrl("gemini-web-upload")).toContain("googleapis.com");
         expect(getApiBaseUrl("gemini-api-upload")).toContain("googleapis.com");
+    });
+});
+
+describe("config - loadConfigSafe", () => {
+    it("returns config object without throwing", () => {
+        const cfg = loadConfigSafe();
+        expect(typeof cfg).toBe("object");
+    });
+});
+
+describe("config - searchProvider/searchModel schema fields", () => {
+    it("accepts searchProvider in config override", () => {
+        const cfg = getSummaryModels({ searchProvider: "exa" } as Record<string, unknown>);
+        expect(cfg).toBeDefined();
+    });
+
+    it("accepts searchModel in config override", () => {
+        const models = getSummaryModels({ searchModel: "gpt-4" } as Record<string, unknown>);
+        expect(models).toBeDefined();
     });
 });

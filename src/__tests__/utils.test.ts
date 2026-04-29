@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+    errorMessage,
     extractHeadingTitle,
     extractTitleFromUrl,
     formatSeconds,
+    isAbortError,
+    isPDFUrl,
     isTimeoutError,
     mapFfmpegError,
+    normalizeApiKey,
     readExecError,
     trimErrorText,
 } from "../utils.js";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Existing tests
+// ═══════════════════════════════════════════════════════════════════════════════
 
 describe("formatSeconds", () => {
     it("formats seconds only", () => {
@@ -131,5 +139,75 @@ describe("extractTitleFromUrl", () => {
 
     it("handles invalid urls", () => {
         expect(extractTitleFromUrl("not-a-url")).toBe("not-a-url");
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// New tests for consolidated helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("normalizeApiKey", () => {
+    it("returns trimmed string for valid input", () => {
+        expect(normalizeApiKey("  my-key  ")).toBe("my-key");
+        expect(normalizeApiKey("my-key")).toBe("my-key");
+    });
+
+    it("returns null for empty or whitespace-only strings", () => {
+        expect(normalizeApiKey("")).toBeNull();
+        expect(normalizeApiKey("   ")).toBeNull();
+    });
+
+    it("returns null for non-string types", () => {
+        expect(normalizeApiKey(null)).toBeNull();
+        expect(normalizeApiKey(undefined)).toBeNull();
+        expect(normalizeApiKey(123)).toBeNull();
+        expect(normalizeApiKey({})).toBeNull();
+    });
+});
+
+describe("errorMessage", () => {
+    it("extracts message from Error instances", () => {
+        expect(errorMessage(new Error("test error"))).toBe("test error");
+    });
+
+    it("converts non-Error to string", () => {
+        expect(errorMessage("string error")).toBe("string error");
+        expect(errorMessage(42)).toBe("42");
+        expect(errorMessage(null)).toBe("null");
+        expect(errorMessage(undefined)).toBe("undefined");
+    });
+});
+
+describe("isAbortError", () => {
+    it("detects abort in error message", () => {
+        expect(isAbortError(new Error("The operation was aborted"))).toBe(true);
+        expect(isAbortError(new Error("request aborted by user"))).toBe(true);
+    });
+
+    it("detects AbortError by name", () => {
+        const err = new DOMException("Aborted", "AbortError");
+        expect(isAbortError(err)).toBe(true);
+    });
+
+    it("returns false for non-abort errors", () => {
+        expect(isAbortError(new Error("network error"))).toBe(false);
+        expect(isAbortError(null)).toBe(false);
+    });
+});
+
+describe("isPDFUrl", () => {
+    it("detects PDF URLs by extension", () => {
+        expect(isPDFUrl("https://example.com/doc.pdf")).toBe(true);
+        expect(isPDFUrl("https://example.com/path/to/file.PDF")).toBe(true);
+    });
+
+    it("returns false for non-PDF URLs", () => {
+        expect(isPDFUrl("https://example.com/doc.html")).toBe(false);
+        expect(isPDFUrl("https://example.com/doc.pdf?query=1")).toBe(true);
+    });
+
+    it("handles bare strings", () => {
+        expect(isPDFUrl("file.pdf")).toBe(true);
+        expect(isPDFUrl("not-a-pdf")).toBe(false);
     });
 });

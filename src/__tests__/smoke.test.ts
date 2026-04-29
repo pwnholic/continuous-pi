@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { beforeAll, describe, expect, it } from "vitest";
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Smoke Tests — memverifikasi bahwa semua komponen kritis berfungsi
+// Smoke Tests — verify all critical components load and function
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ── 1. Webclaw Binary ────────────────────────────────────────────────────────
@@ -58,11 +58,15 @@ describe("smoke: module imports", () => {
         expect(types).toBeDefined();
     });
 
-    it("utils module loads", async () => {
+    it("utils module loads with all exports", async () => {
         const utils = await import("../utils.js");
         expect(typeof utils.formatSeconds).toBe("function");
         expect(typeof utils.extractHeadingTitle).toBe("function");
         expect(typeof utils.mapFfmpegError).toBe("function");
+        expect(typeof utils.normalizeApiKey).toBe("function");
+        expect(typeof utils.errorMessage).toBe("function");
+        expect(typeof utils.isAbortError).toBe("function");
+        expect(typeof utils.isPDFUrl).toBe("function");
     });
 
     it("storage module loads", async () => {
@@ -97,6 +101,16 @@ describe("smoke: module imports", () => {
     it("providers all load", async () => {
         const registry = await import("../providers/registry.js");
         expect(typeof registry.resolveProvider).toBe("function");
+    });
+
+    it("curator HTML renderer loads", async () => {
+        const html = await import("../curator/html.js");
+        expect(typeof html.renderCuratorHTML).toBe("function");
+    });
+
+    it("curator server loads", async () => {
+        const server = await import("../curator/server.js");
+        expect(typeof server.startCuratorServer).toBe("function");
     });
 });
 
@@ -155,5 +169,49 @@ describe("smoke: deterministic summary", () => {
         ]);
         expect(result.summary).toContain("test query");
         expect(result.meta.fallbackUsed).toBe(true);
+    });
+});
+
+// ── 6. Curator HTML rendering ─────────────────────────────────────────────────
+
+describe("smoke: curator HTML", () => {
+    it("renders valid HTML with all required elements", async () => {
+        const { renderCuratorHTML } = await import("../curator/html.js");
+        const html = renderCuratorHTML({
+            queries: ["test query 1", "test query 2"],
+            sessionToken: "tok-123",
+            timeout: 20,
+            availableProviders: { perplexity: true, exa: true, gemini: false },
+            defaultProvider: "exa",
+            summaryModels: [{ value: "claude-haiku-4-5", label: "Claude Haiku" }],
+            defaultSummaryModel: null,
+        });
+
+        expect(html).toContain("<!DOCTYPE html>");
+        expect(html).toContain("Web Search Curator");
+        expect(html).toContain("test query 1");
+        expect(html).toContain("tok-123");
+        expect(html).toContain("tailwindcss");
+        expect(html).toContain("perplexity");
+        expect(html).toContain("exa");
+        expect(html).toContain("claude-haiku-4-5");
+        expect(html).toContain("Generate Summary");
+        expect(html).toContain("Submit Results");
+    });
+
+    it("injects config as JSON for client-side use", async () => {
+        const { renderCuratorHTML } = await import("../curator/html.js");
+        const html = renderCuratorHTML({
+            queries: ["q"],
+            sessionToken: "tok",
+            timeout: 30,
+            availableProviders: { perplexity: false, exa: true, gemini: false },
+            defaultProvider: "exa",
+            summaryModels: [],
+            defaultSummaryModel: null,
+        });
+
+        expect(html).toContain('"sessionToken":"tok"');
+        expect(html).toContain('"timeout":30');
     });
 });
