@@ -1,23 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
-import { extname, join } from "node:path";
 import type { SummaryMeta } from "../summary-review.js";
+import { renderCuratorHTML } from "./html.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const DIST_DIR = new URL("../../curator-ui/dist", import.meta.url).pathname;
-
-const MIME_TYPES: Record<string, string> = {
-    ".html": "text/html; charset=utf-8",
-    ".js": "application/javascript; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".svg": "image/svg+xml",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".ico": "image/x-icon",
-    ".json": "application/json",
-    ".map": "application/json",
-};
 
 const MAX_BODY_SIZE = 64 * 1024;
 const STALE_THRESHOLD_MS = 30000;
@@ -162,23 +147,6 @@ function normalizeSummaryMeta(value: unknown): SummaryMeta | null {
     return meta as unknown as SummaryMeta;
 }
 
-function serveStaticFile(res: ServerResponse, filePath: string): void {
-    const ext = extname(filePath).toLowerCase();
-    const mime = MIME_TYPES[ext] ?? "application/octet-stream";
-
-    try {
-        const content = readFileSync(filePath);
-        res.writeHead(200, {
-            "Content-Type": mime,
-            "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=31536000, immutable",
-        });
-        res.end(content);
-    } catch {
-        res.writeHead(404, { "Content-Type": "text/plain" });
-        res.end("Not found");
-    }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // Server
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -263,23 +231,17 @@ export function startCuratorServer(
         sseBuffer.push(payload);
     };
 
-    // ── HTML template: inject server options into window ───────────────────────
+    // ── HTML template ───────────────────────────────────────────────────────
 
-    const indexHtmlPath = join(DIST_DIR, "index.html");
-    const indexHtml = existsSync(indexHtmlPath)
-        ? readFileSync(indexHtmlPath, "utf-8").replace(
-              '<script type="module" crossorigin src="/assets/',
-              `<script>window.__CURATOR_OPTIONS__=${JSON.stringify({
-                  queries,
-                  sessionToken,
-                  timeout: options.timeout,
-                  availableProviders,
-                  defaultProvider,
-                  summaryModels,
-                  defaultSummaryModel,
-              } satisfies CuratorServerOptions)}</script><script type="module" crossorigin src="/assets/`,
-          )
-        : "<!doctype html><html><body><p>Curator UI not built. Run: cd curator-ui && npm run build</p></body></html>";
+    const indexHtml = renderCuratorHTML({
+        queries,
+        sessionToken,
+        timeout: options.timeout,
+        availableProviders,
+        defaultProvider,
+        summaryModels,
+        defaultSummaryModel,
+    });
 
     // ── HTTP Server ────────────────────────────────────────────────────────────
 
@@ -288,18 +250,13 @@ export function startCuratorServer(
             const method = req.method || "GET";
             const url = new URL(req.url || "/", `http://${req.headers.host || "127.0.0.1"}`);
 
-            // ── Static files ──────────────────────────────────────────────────
+            // ── HTML page ────────────────────────────────────────────────────
             if (method === "GET" && url.pathname === "/") {
                 res.writeHead(200, {
                     "Content-Type": "text/html; charset=utf-8",
                     "Cache-Control": "no-store",
                 });
                 res.end(indexHtml);
-                return;
-            }
-            if (method === "GET" && url.pathname.startsWith("/assets/")) {
-                const filePath = join(DIST_DIR, url.pathname);
-                serveStaticFile(res, filePath);
                 return;
             }
 
