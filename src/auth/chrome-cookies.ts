@@ -215,19 +215,20 @@ let sqliteModule: typeof import("node:sqlite") | null = null;
 
 async function importSqlite(): Promise<typeof import("node:sqlite") | null> {
     if (sqliteModule) return sqliteModule;
-    const orig = process.emitWarning.bind(process);
-    process.emitWarning = ((warning: string | Error, ...args: unknown[]) => {
-        const msg = typeof warning === "string" ? warning : (warning?.message ?? "");
-        if (msg.includes("SQLite is an experimental feature")) return;
-        return (orig as Function)(warning, ...args);
-    }) as typeof process.emitWarning;
+
+    const onWarning = (warning: Error) => {
+        if (warning.message?.includes("SQLite is an experimental feature")) return;
+        process.stderr.write(`(node) Warning: ${warning.message}\n`);
+    };
+    process.on("warning", onWarning);
+
     try {
         sqliteModule = await import("node:sqlite");
         return sqliteModule;
     } catch {
         return null;
     } finally {
-        process.emitWarning = orig;
+        process.removeListener("warning", onWarning);
     }
 }
 

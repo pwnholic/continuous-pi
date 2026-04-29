@@ -94,3 +94,20 @@ export function isPDFUrl(url: string): boolean {
         return url.toLowerCase().endsWith(".pdf");
     }
 }
+
+/** Normalize an API key value: trim whitespace, return null if empty or non-string. */
+export function normalizeApiKey(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
+}
+
+/** Extract error message from unknown error. */
+export function errorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}
+
+/** Check if an error is an abort/cancellation error. */
+export function isAbortError(err: unknown): boolean {
+    return errorMessage(err).toLowerCase().includes("abort");
+}

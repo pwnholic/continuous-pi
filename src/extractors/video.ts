@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { getApiBaseUrl, loadConfig } from "../config.js";
-import { API_BASE, getApiKey } from "../providers/gemini-api.js";
+import { API_BASE, getApiKey, queryGeminiApiWithVideo } from "../providers/gemini-api.js";
 import type { ExtractedContent, FrameResult } from "../types.js";
 import { extractHeadingTitle, formatSeconds, mapFfmpegError, readExecError, trimErrorText } from "../utils.js";
 
@@ -49,9 +49,8 @@ function loadVideoConfig(): VideoConfig {
             typeof v.preferredModel === "string" && v.preferredModel.trim().length > 0
                 ? v.preferredModel.trim()
                 : "gemini-3-flash-preview",
-        maxSizeMB: typeof v.maxSizeMB === "number" && Number.isFinite(v.maxSizeMB) && v.maxSizeMB > 0
-            ? v.maxSizeMB
-            : 50,
+        maxSizeMB:
+            typeof v.maxSizeMB === "number" && Number.isFinite(v.maxSizeMB) && v.maxSizeMB > 0 ? v.maxSizeMB : 50,
     };
 }
 
@@ -286,7 +285,6 @@ export async function extractVideoFromGemini(
 
         await pollFileState(fileName, apiKey, signal, 120000);
 
-        const { queryGeminiApiWithVideo } = await import("../providers/gemini-api.js");
         const text = await queryGeminiApiWithVideo(effectivePrompt, uploaded.uri, {
             model: effectiveModel,
             mimeType: info.mimeType,

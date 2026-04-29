@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getWebclawConfig, getSummaryModels, getSummarizerModel, getVideoModel, getApiBaseUrl } from "../config.js";
+import { getApiBaseUrl, getSummarizerModel, getSummaryModels, getVideoModel, getWebclawConfig } from "../config.js";
 
 describe("config - getWebclawConfig", () => {
     it("returns defaults when no webclaw config", () => {

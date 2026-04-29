@@ -2,14 +2,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { activityMonitor } from "../activity/monitor.js";
+import { getApiBaseUrl, loadConfig } from "../config.js";
 import type { ExtractedContent, SearchOptions, SearchResponse } from "../types.js";
+import { normalizeApiKey } from "../utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const EXA_ANSWER_URL = "https://api.exa.ai/answer";
-const EXA_SEARCH_URL = "https://api.exa.ai/search";
+const EXA_API_BASE = getApiBaseUrl("exa");
+const EXA_ANSWER_URL = `${EXA_API_BASE}/answer`;
+const EXA_SEARCH_URL = `${EXA_API_BASE}/search`;
 const EXA_MCP_URL = "https://mcp.exa.ai/mcp";
-const CONFIG_PATH = join(homedir(), ".pi", "web-search.json");
 const USAGE_PATH = join(homedir(), ".pi", "exa-usage.json");
 
 const MONTHLY_LIMIT = 1000;
@@ -60,30 +62,7 @@ type McpParsedResult = { title: string; url: string; content: string };
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-let cachedConfig: { exaApiKey?: unknown } | null = null;
 let warnedMonth: string | null = null;
-
-function loadConfig(): { exaApiKey?: unknown } {
-    if (cachedConfig) return cachedConfig;
-    if (!existsSync(CONFIG_PATH)) {
-        cachedConfig = {};
-        return cachedConfig;
-    }
-    const raw = readFileSync(CONFIG_PATH, "utf-8");
-    try {
-        cachedConfig = JSON.parse(raw) as { exaApiKey?: unknown };
-        return cachedConfig;
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        throw new Error(`Failed to parse ${CONFIG_PATH}: ${message}`);
-    }
-}
-
-function normalizeApiKey(value: unknown): string | null {
-    if (typeof value !== "string") return null;
-    const normalized = value.trim();
-    return normalized.length > 0 ? normalized : null;
-}
 
 function getApiKey(): string | null {
     return normalizeApiKey(process.env.EXA_API_KEY) ?? normalizeApiKey(loadConfig().exaApiKey);

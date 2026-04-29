@@ -4,19 +4,12 @@ import type { Api } from "@mariozechner/pi-ai";
 // Model type from pi-ai is generic. We use it in a context-agnostic way.
 type AnyModel = import("@mariozechner/pi-ai").Model<Api>;
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { getSummaryModels, getSummarizerModel } from "./config.js";
-import type { QueryResultData } from "./types.js";
+import { getSummarizerModel, getSummaryModels } from "./config.js";
+import type { QueryResultData, SummaryMeta } from "./types.js";
+
+export type { SummaryMeta };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface SummaryMeta {
-    model: string | null;
-    durationMs: number;
-    tokenEstimate: number;
-    fallbackUsed: boolean;
-    fallbackReason?: string;
-    edited?: boolean;
-}
 
 export type SummaryGenerationContext = Pick<ExtensionContext, "model" | "modelRegistry">;
 
@@ -119,6 +112,7 @@ function buildDeterministicSummaryLines(results: QueryResultData[]): string[] {
     const lines: string[] = ["Summary based on the currently selected search results.", ""];
 
     const sourceUrls: string[] = [];
+    const seenUrls = new Set<string>();
     let successful = 0;
     let failed = 0;
 
@@ -140,7 +134,8 @@ function buildDeterministicSummaryLines(results: QueryResultData[]): string[] {
         }
 
         for (const source of result.results) {
-            if (!sourceUrls.includes(source.url)) {
+            if (!seenUrls.has(source.url)) {
+                seenUrls.add(source.url);
                 sourceUrls.push(source.url);
             }
         }

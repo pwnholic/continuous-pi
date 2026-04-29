@@ -1,15 +1,6 @@
-import type { ResolvedSearchProvider, SearchProvider } from "../types.js";
+import type { ProviderAvailability, ResolvedSearchProvider, SearchProvider } from "../types.js";
 
-export type { ResolvedSearchProvider, SearchProvider };
-
-/**
- * Provider registry stores availability status for each search provider.
- */
-export interface ProviderAvailability {
-    perplexity: boolean;
-    exa: boolean;
-    gemini: boolean;
-}
+export type { ProviderAvailability, ResolvedSearchProvider, SearchProvider };
 
 const _providerNames: ResolvedSearchProvider[] = ["perplexity", "exa", "gemini"];
 

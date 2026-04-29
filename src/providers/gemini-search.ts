@@ -1,15 +1,15 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { activityMonitor } from "../activity/monitor.js";
+import { loadConfig } from "../config.js";
 import type {
     AttributedSearchResponse,
+    FullSearchOptions,
     ResolvedSearchProvider,
     SearchOptions,
     SearchProvider,
     SearchResponse,
     SearchResult,
 } from "../types.js";
+import { errorMessage, isAbortError } from "../utils.js";
 import { hasExaApiKey, isExaAvailable, searchWithExa } from "./exa.js";
 import { API_BASE, DEFAULT_MODEL, getApiKey } from "./gemini-api.js";
 import { isGeminiWebAvailable, queryWithCookies } from "./gemini-web.js";
@@ -19,39 +19,11 @@ import { isPerplexityAvailable, searchWithPerplexity } from "./perplexity.js";
 // Config
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const CONFIG_PATH = join(homedir(), ".pi", "web-search.json");
-
-let cachedSearchConfig: { searchProvider: SearchProvider; searchModel?: string } | null = null;
-
 function getSearchConfig(): { searchProvider: SearchProvider; searchModel?: string } {
-    if (cachedSearchConfig) return cachedSearchConfig;
-    if (!existsSync(CONFIG_PATH)) {
-        cachedSearchConfig = { searchProvider: "auto", searchModel: undefined };
-        return cachedSearchConfig;
-    }
-
-    const rawText = readFileSync(CONFIG_PATH, "utf-8");
-    let raw: {
-        searchProvider?: SearchProvider;
-        provider?: SearchProvider;
-        searchModel?: unknown;
-    };
-    try {
-        raw = JSON.parse(rawText) as {
-            searchProvider?: SearchProvider;
-            provider?: SearchProvider;
-            searchModel?: unknown;
-        };
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        throw new Error(`Failed to parse ${CONFIG_PATH}: ${message}`);
-    }
-
-    cachedSearchConfig = {
-        searchProvider: normalizeSearchProvider(raw.searchProvider ?? raw.provider),
-        searchModel: normalizeSearchModel(raw.searchModel),
-    };
-    return cachedSearchConfig;
+    const config = loadConfig();
+    const provider = normalizeSearchProvider(config.provider ?? config.searchProvider);
+    const searchModel = normalizeSearchModel(config.searchModel);
+    return { searchProvider: provider, searchModel };
 }
 
 function normalizeSearchModel(value: unknown): string | undefined {
@@ -65,27 +37,6 @@ function normalizeSearchProvider(value: unknown): SearchProvider {
     return normalized === "auto" || normalized === "perplexity" || normalized === "gemini" || normalized === "exa"
         ? normalized
         : "auto";
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Types
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export interface FullSearchOptions extends SearchOptions {
-    provider?: SearchProvider;
-    includeContent?: boolean;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Helpers
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function errorMessage(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
-}
-
-function isAbortError(err: unknown): boolean {
-    return errorMessage(err).toLowerCase().includes("abort");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

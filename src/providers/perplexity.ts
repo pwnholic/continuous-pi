@@ -1,15 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { activityMonitor } from "../activity/monitor.js";
+import { getApiBaseUrl, loadConfig } from "../config.js";
 import type { ExtractedContent, SearchOptions, SearchResponse, SearchResult } from "../types.js";
+import { normalizeApiKey } from "../utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-import { getApiBaseUrl } from "../config.js";
-
 const PERPLEXITY_API_URL = getApiBaseUrl("perplexity");
-const CONFIG_PATH = join(homedir(), ".pi", "web-search.json");
 
 // Rate limit: 10 requests per 60s window
 const RATE_LIMIT = {
@@ -30,36 +26,12 @@ export interface PerplexitySearchOptions extends SearchOptions {
 // Config
 // ═══════════════════════════════════════════════════════════════════════════════
 
-let cachedConfig: { perplexityApiKey?: unknown } | null = null;
-
-function loadConfig(): { perplexityApiKey?: unknown } {
-    if (cachedConfig) return cachedConfig;
-    if (!existsSync(CONFIG_PATH)) {
-        cachedConfig = {};
-        return cachedConfig;
-    }
-    const content = readFileSync(CONFIG_PATH, "utf-8");
-    try {
-        cachedConfig = JSON.parse(content) as { perplexityApiKey?: unknown };
-        return cachedConfig;
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        throw new Error(`Failed to parse ${CONFIG_PATH}: ${message}`);
-    }
-}
-
-function normalizeApiKey(value: unknown): string | null {
-    if (typeof value !== "string") return null;
-    const normalized = value.trim();
-    return normalized.length > 0 ? normalized : null;
-}
-
 function getApiKey(): string {
     const config = loadConfig();
     const key = normalizeApiKey(process.env.PERPLEXITY_API_KEY) ?? normalizeApiKey(config.perplexityApiKey);
     if (!key) {
         throw new Error(
-            `Perplexity API key not found. Either:\n  1. Create ${CONFIG_PATH} with { "perplexityApiKey": "your-key" }\n  2. Set PERPLEXITY_API_KEY environment variable\nGet a key at https://perplexity.ai/settings/api`,
+            `Perplexity API key not found. Either:\n  1. Create ~/.pi/web-search.json with { "perplexityApiKey": "your-key" }\n  2. Set PERPLEXITY_API_KEY environment variable\nGet a key at https://perplexity.ai/settings/api`,
         );
     }
     return key;

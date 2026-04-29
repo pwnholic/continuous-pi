@@ -1,11 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { type CookieMap, getGoogleCookies } from "../auth/chrome-cookies.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-import { getApiBaseUrl, getGeminiWebAppUrl } from "../config.js";
+import { getApiBaseUrl, getGeminiWebAppUrl, loadConfig } from "../config.js";
 
 const GEMINI_APP_URL = getGeminiWebAppUrl();
 const GEMINI_STREAM_GENERATE_URL = getApiBaseUrl("gemini-web");
@@ -25,7 +24,6 @@ const MODEL_HEADERS: Record<string, string> = {
 };
 
 const REQUIRED_COOKIES = ["__Secure-1PSID", "__Secure-1PSIDTS"];
-const CONFIG_PATH = join(homedir(), ".pi", "web-search.json");
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -49,30 +47,6 @@ interface GeminiWebResult {
 // Config
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface GeminiWebConfig {
-    chromeProfile?: string;
-}
-
-let cachedConfig: GeminiWebConfig | null = null;
-
-function loadConfig(): GeminiWebConfig {
-    if (cachedConfig) return cachedConfig;
-    if (!existsSync(CONFIG_PATH)) {
-        cachedConfig = {};
-        return cachedConfig;
-    }
-    const rawText = readFileSync(CONFIG_PATH, "utf-8");
-    let raw: { chromeProfile?: unknown };
-    try {
-        raw = JSON.parse(rawText) as { chromeProfile?: unknown };
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        throw new Error(`Failed to parse ${CONFIG_PATH}: ${message}`);
-    }
-    cachedConfig = { chromeProfile: normalizeChromeProfile(raw.chromeProfile) };
-    return cachedConfig;
-}
-
 function normalizeChromeProfile(value: unknown): string | undefined {
     if (typeof value !== "string") return undefined;
     const normalized = value.trim();
@@ -80,7 +54,7 @@ function normalizeChromeProfile(value: unknown): string | undefined {
 }
 
 function getChromeProfileFromConfig(): string | undefined {
-    return loadConfig().chromeProfile;
+    return normalizeChromeProfile(loadConfig().chromeProfile);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

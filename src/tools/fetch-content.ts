@@ -5,6 +5,7 @@ import TurndownService from "turndown";
 import { activityMonitor } from "../activity/monitor.js";
 import { extractVertical, extractWithWebclaw } from "../extractors/webclaw.js";
 import type { ExtractOptions, ExtractedContent, VideoFrame } from "../types.js";
+import { errorMessage, extractHeadingTitle, extractTitleFromUrl } from "../utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -22,16 +23,6 @@ const turndown = new TurndownService({
 // ─── Concurrency ──────────────────────────────────────────────────────────────
 
 const fetchLimit = pLimit(CONCURRENT_LIMIT);
-
-// ─── Error Helpers ────────────────────────────────────────────────────────────
-
-function errorMessage(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
-}
-
-function isAbortError(err: unknown): boolean {
-    return errorMessage(err).toLowerCase().includes("abort");
-}
 
 function abortedResult(url: string): ExtractedContent {
     return { url, title: "", content: "", error: "Aborted" };
@@ -391,22 +382,4 @@ export async function fetchAllContent(
     options?: FetchExtractOptions,
 ): Promise<ExtractedContent[]> {
     return Promise.all(urls.map((url) => fetchLimit(() => extractContent(url, signal, options))));
-}
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
-
-function extractHeadingTitle(text: string): string | null {
-    const match = text.match(/^#{1,2}\s+(.+)/m);
-    if (!match) return null;
-    const cleaned = match[1]?.replace(/\*+/g, "").trim();
-    return cleaned || null;
-}
-
-function extractTitleFromUrl(url: string): string {
-    try {
-        const parsed = new URL(url);
-        return parsed.pathname.split("/").pop() ?? parsed.hostname;
-    } catch {
-        return url;
-    }
 }

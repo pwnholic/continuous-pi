@@ -1,5 +1,6 @@
 import { StringEnum } from "@mariozechner/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { Theme } from "@mariozechner/pi-coding-agent";
 import { Text, truncateToWidth } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { activityMonitor } from "./activity/monitor.js";
@@ -33,7 +34,7 @@ export default function (pi: ExtensionAPI) {
     let widgetVisible = false;
     let widgetUnsubscribe: (() => void) | null = null;
 
-    pi.on("session_start", async (_event, ctx) => {
+    pi.on("session_start", async (_event: unknown, ctx: ExtensionContext) => {
         _sessionActive = true;
         restoreFromSession(ctx);
 
@@ -81,24 +82,24 @@ export default function (pi: ExtensionAPI) {
             ),
         }),
 
-        async execute(_toolCallId: any, params: any, signal?: any, onUpdate?: any): Promise<any> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async execute(_toolCallId: string, params: any, signal?: AbortSignal, onUpdate?: any): Promise<any> {
             return executeWebSearch(
                 {
-                    query: params.query,
-                    queries: params.queries,
-                    numResults: params.numResults,
-                    includeContent: params.includeContent,
-                    recencyFilter: params.recencyFilter,
-                    domainFilter: params.domainFilter,
-                    provider: params.provider,
+                    query: params.query as string | undefined,
+                    queries: params.queries as string[] | undefined,
+                    numResults: params.numResults as number | undefined,
+                    includeContent: params.includeContent as boolean | undefined,
+                    recencyFilter: params.recencyFilter as "day" | "week" | "month" | "year" | undefined,
+                    domainFilter: params.domainFilter as string[] | undefined,
+                    provider: params.provider as string | undefined,
                 },
                 signal,
-                onUpdate as any,
+                onUpdate,
             );
         },
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        renderCall(args: any, theme: any) {
+        renderCall(args: any, theme: Theme) {
             const rawQueryList: unknown[] = Array.isArray(args.queries)
                 ? args.queries
                 : args.query !== undefined
@@ -127,8 +128,7 @@ export default function (pi: ExtensionAPI) {
             return new Text(lines.join("\n"), 0, 0);
         },
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        renderResult(result: any, { isPartial }: any, theme: any) {
+        renderResult(result: any, { isPartial }: any, theme: Theme) {
             const details = result.details as Record<string, unknown> | undefined;
             if (isPartial) {
                 const progress = (details?.progress as number) ?? 0;
@@ -166,7 +166,8 @@ export default function (pi: ExtensionAPI) {
             model: Type.Optional(Type.String({ description: "Override Gemini model for video" })),
         }),
 
-        async execute(_toolCallId: any, params: any, signal?: any, onUpdate?: any): Promise<any> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async execute(_toolCallId: string, params: any, signal?: AbortSignal, onUpdate?: any): Promise<any> {
             const urls: string[] = [];
             if (Array.isArray(params.urls))
                 urls.push(...(params.urls as string[]).filter((u) => typeof u === "string" && u.trim().length > 0));
@@ -186,11 +187,11 @@ export default function (pi: ExtensionAPI) {
             });
 
             const results = await fetchAllContent(urls, signal, {
-                forceClone: params.forceClone,
-                prompt: params.prompt,
-                timestamp: params.timestamp,
-                frames: params.frames,
-                model: params.model,
+                forceClone: params.forceClone as boolean | undefined,
+                prompt: params.prompt as string | undefined,
+                timestamp: params.timestamp as string | undefined,
+                frames: params.frames as number | undefined,
+                model: params.model as string | undefined,
             });
 
             if (signal?.aborted) return { content: [{ type: "text" as const, text: "Aborted" }], details: {} };
@@ -223,14 +224,15 @@ export default function (pi: ExtensionAPI) {
             maxTokens: Type.Optional(Type.Number({ description: "Max tokens (default: 5000)" })),
         }),
 
-        async execute(_toolCallId: any, params: any, signal?: any): Promise<any> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async execute(_toolCallId: string, params: any, signal?: AbortSignal): Promise<any> {
             const query = typeof params.query === "string" ? params.query.trim() : "";
             if (!query)
                 return {
                     content: [{ type: "text" as const, text: "Error: No query provided." }],
                     details: { error: "No query" },
                 };
-            return executeCodeSearch(query, params.maxTokens ?? 5000, signal);
+            return executeCodeSearch(query, (params.maxTokens as number) ?? 5000, signal);
         },
     });
 
@@ -249,7 +251,8 @@ export default function (pi: ExtensionAPI) {
             urlIndex: Type.Optional(Type.Number({ description: "URL index from fetch results" })),
         }),
 
-        async execute(_toolCallId: any, params: any): Promise<any> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async execute(_toolCallId: string, params: any): Promise<any> {
             const { getContentForQuery, getSearchContent } = await import("./tools/get-content.js");
             const responseId = typeof params.responseId === "string" ? params.responseId.trim() : "";
             if (!responseId) {
@@ -310,9 +313,8 @@ export default function (pi: ExtensionAPI) {
 
     // ── Activity Widget ─────────────────────────────────────────────────────────
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function updateWidget(ctx: any): void {
-        const theme = ctx.ui.theme as { fg: (color: string, text: string) => string };
+    function updateWidget(ctx: ExtensionContext): void {
+        const theme = (ctx as unknown as { ui: { theme: Theme } }).ui.theme;
         const entries = activityMonitor.getEntries();
         const lines: string[] = [];
 
@@ -339,8 +341,7 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.setWidget("web-activity", lines);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function formatEntryLine(entry: ActivityEntry, theme: any): string {
+    function formatEntryLine(entry: ActivityEntry, theme: Theme): string {
         const typeStr = entry.type === "api" ? "API" : "GET";
         const target =
             entry.type === "api"
@@ -376,8 +377,7 @@ export default function (pi: ExtensionAPI) {
 
     pi.registerShortcut(shortcutActivity as any, {
         description: "Toggle web search activity widget",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        handler: async (ctx: any) => {
+        handler: async (ctx: ExtensionContext) => {
             widgetVisible = !widgetVisible;
             if (widgetVisible) {
                 widgetUnsubscribe = activityMonitor.onUpdate(() => updateWidget(ctx));
@@ -394,8 +394,7 @@ export default function (pi: ExtensionAPI) {
 
     pi.registerCommand("webclaw-status", {
         description: "Show webclaw installation status",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        handler: async (_args, ctx: any) => {
+        handler: async (_args, ctx: ExtensionCommandContext) => {
             const binPath = findWebclawBinary();
             if (binPath) {
                 const version = getWebclawVersion();
@@ -408,8 +407,7 @@ export default function (pi: ExtensionAPI) {
 
     pi.registerCommand("web-search-config", {
         description: "Show web-search config file path",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        handler: async (_args, ctx: any) => {
+        handler: async (_args, ctx: ExtensionCommandContext) => {
             const { getConfigPath } = await import("./config.js");
             ctx.ui.notify(`Config: ${getConfigPath()}`, "info");
         },

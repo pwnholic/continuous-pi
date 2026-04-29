@@ -10,6 +10,8 @@ import { z } from "zod";
 const WebSearchConfigSchema = z.object({
     // ── General ────────────────────────────────────────────────────────────────
     provider: z.enum(["auto", "perplexity", "exa", "gemini"]).optional(),
+    searchProvider: z.enum(["auto", "perplexity", "exa", "gemini"]).optional(),
+    searchModel: z.string().optional(),
     workflow: z.enum(["none", "summary-review"]).optional(),
     curatorTimeoutSeconds: z.number().int().min(1).max(600).optional(),
 

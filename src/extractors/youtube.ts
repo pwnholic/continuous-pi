@@ -77,7 +77,7 @@ export async function getYouTubeStreamInfo(videoId: string): Promise<StreamResul
         const rawDuration = lines[0]?.trim();
         const streamUrl = lines[1]?.trim();
         if (!streamUrl) return { error: "yt-dlp failed: missing stream URL" };
-        const parsedDuration = rawDuration && rawDuration !== "NA" ? Number.parseFloat(rawDuration) : NaN;
+        const parsedDuration = rawDuration && rawDuration !== "NA" ? Number.parseFloat(rawDuration) : Number.NaN;
         const duration = Number.isFinite(parsedDuration) ? parsedDuration : null;
         return { streamUrl, duration };
     } catch (err) {
@@ -91,7 +91,19 @@ async function extractFrameFromStream(streamUrl: string, seconds: number): Promi
     try {
         const buffer = execFileSync(
             "ffmpeg",
-            ["-ss", String(seconds), "-i", streamUrl, "-frames:v", "1", "-f", "image2pipe", "-vcodec", "mjpeg", "pipe:1"],
+            [
+                "-ss",
+                String(seconds),
+                "-i",
+                streamUrl,
+                "-frames:v",
+                "1",
+                "-f",
+                "image2pipe",
+                "-vcodec",
+                "mjpeg",
+                "pipe:1",
+            ],
             { maxBuffer: 5 * 1024 * 1024, timeout: 30000, stdio: ["pipe", "pipe", "pipe"] },
         );
         if (buffer.length === 0) return { error: "ffmpeg failed: empty output" };
@@ -135,9 +147,7 @@ export async function extractYouTubeFrames(
 }
 
 /** Fetch YouTube video thumbnail */
-export async function fetchYouTubeThumbnail(
-    videoId: string,
-): Promise<{ data: string; mimeType: string } | null> {
+export async function fetchYouTubeThumbnail(videoId: string): Promise<{ data: string; mimeType: string } | null> {
     try {
         const res = await fetch(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`, {
             signal: AbortSignal.timeout(5000),
